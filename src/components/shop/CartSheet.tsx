@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -11,7 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ShoppingBag, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -19,9 +21,11 @@ import { useNavigate } from 'react-router-dom';
 export const CartSheet = () => {
   const { items, totalItems, totalPrice, updateQuantity, removeFromCart, clearCart } = useCart();
   const { user } = useAuth();
+  const { createOrder } = useOrders();
   const navigate = useNavigate();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -32,12 +36,13 @@ export const CartSheet = () => {
       return;
     }
 
-    // Demo checkout
-    toast({
-      title: "Order Placed!",
-      description: "This is a demo. Your order has been placed successfully!",
-    });
-    clearCart();
+    setIsCheckingOut(true);
+    const order = await createOrder(items, totalPrice);
+    setIsCheckingOut(false);
+
+    if (order) {
+      clearCart();
+    }
   };
 
   return (
@@ -129,11 +134,18 @@ export const CartSheet = () => {
                 <span className="text-primary">${totalPrice.toFixed(2)}</span>
               </div>
               <SheetFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={clearCart} className="flex-1">
+                <Button variant="outline" onClick={clearCart} className="flex-1" disabled={isCheckingOut}>
                   Clear Cart
                 </Button>
-                <Button onClick={handleCheckout} className="flex-1">
-                  Checkout
+                <Button onClick={handleCheckout} className="flex-1" disabled={isCheckingOut}>
+                  {isCheckingOut ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Checkout'
+                  )}
                 </Button>
               </SheetFooter>
             </div>
