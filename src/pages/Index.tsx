@@ -1,6 +1,5 @@
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
-import { ServicesSection } from "@/components/ServicesSection";
 import { DiseaseDetails } from "@/components/DiseaseDetails";
 import { Footer } from "@/components/Footer";
 
@@ -10,7 +9,6 @@ const Index = () => {
       <Header />
       <main className="flex-grow">
         <HeroSection />
-        <ServicesSection />
         <DiseaseDetails />
       </main>
       <Footer />
