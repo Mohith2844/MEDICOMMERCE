@@ -1,8 +1,9 @@
-import { Heart, Menu, ShoppingCart, User, LogOut } from "lucide-react";
+import { Heart, Menu, User, LogOut, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { CartSheet } from "@/components/shop/CartSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { name: "Diagnosis", href: "#diagnosis" },
-  { name: "Food & Nutrition", href: "#nutrition" },
-  { name: "Medicines", href: "#medicines" },
-  { name: "Lab Tests", href: "#lab-tests" },
-  { name: "Consultation", href: "#consultation" },
+  { name: "Home", href: "/" },
+  { name: "Shop", href: "/shop" },
+  { name: "Diagnosis", href: "/#diagnosis" },
 ];
 
 export function Header() {
@@ -44,21 +43,19 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
           </nav>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <ShoppingCart className="h-5 w-5" />
-            </Button>
+            <CartSheet />
 
             {!loading && (
               <>
@@ -119,14 +116,14 @@ export function Header() {
           <nav className="md:hidden py-4 border-t animate-fade-in">
             <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.name}
-                  href={link.href}
+                  to={link.href}
                   className="py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {link.name}
-                </a>
+                </Link>
               ))}
               <div className="pt-2 border-t mt-2">
                 {user ? (
