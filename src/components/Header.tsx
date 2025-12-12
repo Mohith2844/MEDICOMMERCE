@@ -1,4 +1,4 @@
-import { Heart, Menu, User, LogOut, Store } from "lucide-react";
+import { Heart, Menu, User, LogOut, Package, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -15,6 +15,7 @@ import {
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "Shop", href: "/shop" },
+  { name: "Food Plans", href: "/food-plans" },
   { name: "Diagnosis", href: "/#diagnosis" },
 ];
 
@@ -79,6 +80,14 @@ export function Header() {
                       <DropdownMenuItem onClick={() => navigate("/profile")}>
                         <User className="mr-2 h-4 w-4" />
                         Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/orders")}>
+                        <Package className="mr-2 h-4 w-4" />
+                        My Orders
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/food-plans")}>
+                        <Utensils className="mr-2 h-4 w-4" />
+                        Food Plans
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleSignOut}>
