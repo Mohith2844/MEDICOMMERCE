@@ -1,20 +1,30 @@
 import { useState } from "react";
-import { Sparkles, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Sparkles, AlertCircle, CheckCircle, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { analyzeSymptoms, AnalysisResult } from "@/lib/symptomAnalyzer";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSymptomHistory } from "@/hooks/useSymptomHistory";
+import { useToast } from "@/hooks/use-toast";
 
 export function SymptomChecker() {
   const [symptoms, setSymptoms] = useState("");
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  const { user } = useAuth();
+  const { saveSymptomCheck } = useSymptomHistory();
+  const { toast } = useToast();
 
   const handleAnalyze = async () => {
     if (!symptoms.trim()) return;
 
     setIsAnalyzing(true);
+    setHasSaved(false);
     // Simulate API delay for better UX
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -22,6 +32,36 @@ export function SymptomChecker() {
     setResults(analysisResults);
     setHasAnalyzed(true);
     setIsAnalyzing(false);
+  };
+
+  const handleSaveToHistory = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save your symptom history.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    const symptomList = symptoms.split(/[,\s]+/).filter((s) => s.trim());
+    const { error } = await saveSymptomCheck(symptomList, results);
+
+    if (error) {
+      toast({
+        title: "Save failed",
+        description: "Could not save to history. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Saved!",
+        description: "Symptom check saved to your history.",
+      });
+      setHasSaved(true);
+    }
+    setIsSaving(false);
   };
 
   return (
@@ -108,6 +148,31 @@ export function SymptomChecker() {
                   </div>
                 </div>
               ))}
+
+              {/* Save to History Button */}
+              {user && !hasSaved && (
+                <Button
+                  onClick={handleSaveToHistory}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save to History
+                </Button>
+              )}
+
+              {hasSaved && (
+                <p className="text-sm text-success text-center">
+                  ✓ Saved to your history
+                </p>
+              )}
+
               <p className="text-xs text-muted-foreground italic">
                 ⚠️ This is not medical advice. Please consult a healthcare professional.
               </p>
