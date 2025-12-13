@@ -4,7 +4,7 @@ Web app built with Vite, React, TypeScript, Tailwind CSS.
 
 Fast development and optimized production build.
 
-Domain: https://medicommerce.vercel.app/
+Domain: https://medicommerce.vercel.app/ 
 
 **Tech Stack**
 
