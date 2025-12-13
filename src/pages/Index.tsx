@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { DiseaseDetails } from "@/components/DiseaseDetails";
 import { Footer } from "@/components/Footer";
+import { AISymptomChat } from "@/components/AISymptomChat";
 
 const Index = () => {
   return (
@@ -12,6 +13,7 @@ const Index = () => {
         <DiseaseDetails />
       </main>
       <Footer />
+      <AISymptomChat />
     </div>
   );
 };
