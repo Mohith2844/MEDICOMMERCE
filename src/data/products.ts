@@ -34,7 +34,7 @@ export const products: Product[] = [
     description: 'Premium fish oil capsules for heart health',
     price: 649,
     category: 'food-nutrition',
-    image: 'https://images.unsplash.com/photo-1577401239170-897942555fb3?w=400&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop',
     inStock: true,
   },
   {
@@ -168,7 +168,7 @@ export const products: Product[] = [
     description: 'Pure organic honey, 500g jar',
     price: 449,
     category: 'groceries',
-    image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop',
     inStock: true,
   },
   {
