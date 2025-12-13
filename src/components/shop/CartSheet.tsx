@@ -92,7 +92,7 @@ export const CartSheet = () => {
                         {item.product.name}
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        ${item.product.price.toFixed(2)}
+                        ₹{item.product.price.toLocaleString('en-IN')}
                       </p>
                       <div className="mt-auto flex items-center gap-2">
                         <Button
@@ -131,7 +131,7 @@ export const CartSheet = () => {
               <Separator />
               <div className="flex items-center justify-between text-lg font-semibold">
                 <span>Total</span>
-                <span className="text-primary">${totalPrice.toFixed(2)}</span>
+                <span className="text-primary">₹{totalPrice.toLocaleString('en-IN')}</span>
               </div>
               <SheetFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={clearCart} className="flex-1" disabled={isCheckingOut}>

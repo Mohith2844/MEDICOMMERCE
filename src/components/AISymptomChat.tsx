@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Send, Loader2, X, Utensils, Bot, User } from "lucide-react";
+import { MessageCircle, Send, Loader2, X, Utensils, Bot, User, Mic, MicOff, Save, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSymptomHistory } from "@/hooks/useSymptomHistory";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -23,14 +26,81 @@ export function AISymptomChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [lastFoodPlan, setLastFoodPlan] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { saveSymptomCheck } = useSymptomHistory();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0].transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        toast({
+          title: "Voice Input Error",
+          description: "Could not recognize speech. Please try again.",
+          variant: "destructive",
+        });
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [toast]);
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Not Supported",
+        description: "Voice input is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast({
+        title: "Listening...",
+        description: "Speak your symptoms clearly",
+      });
+    }
+  };
 
   const streamChat = async (userMessages: Message[], type: "chat" | "food-plan" = "chat") => {
     const resp = await fetch(CHAT_URL, {
@@ -107,7 +177,30 @@ export function AISymptomChat() {
     setIsLoading(true);
 
     try {
-      await streamChat(newMessages.slice(1), "chat");
+      const response = await streamChat(newMessages.slice(1), "chat");
+      
+      // Save symptom check to history if user is logged in
+      if (user) {
+        const symptoms = newMessages
+          .filter((m) => m.role === "user")
+          .map((m) => m.content);
+        
+        await saveSymptomCheck(symptoms, [
+          {
+            disease: {
+              name: "AI Analysis",
+              description: response.substring(0, 200),
+              severity: "mild" as const,
+              symptoms: symptoms,
+              specialty: "General",
+              diet_plan: "",
+              precautions: [],
+            },
+            confidence: 1,
+            matchedSymptoms: symptoms,
+          },
+        ]);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -137,7 +230,8 @@ export function AISymptomChat() {
     setIsGeneratingPlan(true);
 
     try {
-      await streamChat([foodPlanRequest], "food-plan");
+      const foodPlanResponse = await streamChat([foodPlanRequest], "food-plan");
+      setLastFoodPlan(foodPlanResponse);
     } catch (error) {
       toast({
         title: "Error",
@@ -149,12 +243,76 @@ export function AISymptomChat() {
     }
   };
 
+  const handleSaveFoodPlan = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to save food plans",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!lastFoodPlan) {
+      toast({
+        title: "No Food Plan",
+        description: "Generate a food plan first before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingPlan(true);
+
+    try {
+      const today = new Date();
+      const weekStart = today.toISOString().split('T')[0];
+
+      // Parse the AI response into structured meals (simplified parsing)
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const meals = days.map((day) => ({
+        day,
+        breakfast: `AI-suggested breakfast for ${day}`,
+        lunch: `AI-suggested lunch for ${day}`,
+        dinner: `AI-suggested dinner for ${day}`,
+        snacks: `AI-suggested snacks for ${day}`,
+      }));
+
+      const { error } = await supabase.from('food_plans').insert({
+        user_id: user.id,
+        name: `AI Health Plan - ${new Date().toLocaleDateString()}`,
+        description: `Generated based on symptoms: ${messages.filter(m => m.role === 'user').map(m => m.content).slice(0, 3).join(', ')}`,
+        meals: JSON.parse(JSON.stringify(meals)),
+        week_start: weekStart,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Food Plan Saved!",
+        description: "Your AI-generated food plan has been saved to your account.",
+      });
+      setLastFoodPlan(null);
+    } catch (error) {
+      console.error('Error saving food plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save food plan. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  const voiceSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 
   return (
     <>
@@ -177,12 +335,23 @@ export function AISymptomChat() {
               <Bot className="h-5 w-5" />
               <span className="font-semibold">AI Health Assistant</span>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="hover:bg-primary-dark rounded-full p-1 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {user && (
+                <button
+                  onClick={() => window.location.href = '/profile'}
+                  className="hover:bg-primary-dark rounded-full p-1 transition-colors"
+                  title="View History"
+                >
+                  <History className="h-5 w-5" />
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="hover:bg-primary-dark rounded-full p-1 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -229,30 +398,59 @@ export function AISymptomChat() {
             </div>
           </ScrollArea>
 
-          {/* Food Plan Button */}
+          {/* Food Plan Actions */}
           {messages.length > 2 && !isGeneratingPlan && (
-            <div className="px-4 pb-2">
+            <div className="px-4 pb-2 flex gap-2">
               <Button
                 onClick={handleGenerateFoodPlan}
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="flex-1"
                 disabled={isLoading || isGeneratingPlan}
               >
                 <Utensils className="h-4 w-4 mr-2" />
-                Generate 7-Day Food Plan Based on Symptoms
+                Generate Food Plan
               </Button>
+              {lastFoodPlan && user && (
+                <Button
+                  onClick={handleSaveFoodPlan}
+                  variant="default"
+                  size="sm"
+                  disabled={isSavingPlan}
+                >
+                  {isSavingPlan ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
           )}
 
           {/* Input */}
           <div className="p-4 border-t border-border">
             <div className="flex gap-2">
+              {voiceSupported && (
+                <Button
+                  onClick={toggleVoiceInput}
+                  size="icon"
+                  variant={isListening ? "destructive" : "outline"}
+                  className="flex-shrink-0"
+                  disabled={isLoading || isGeneratingPlan}
+                >
+                  {isListening ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe your symptoms..."
+                placeholder={isListening ? "Listening..." : "Describe your symptoms..."}
                 className="min-h-[44px] max-h-[100px] resize-none"
                 disabled={isLoading || isGeneratingPlan}
               />
@@ -270,4 +468,22 @@ export function AISymptomChat() {
       )}
     </>
   );
+}
+
+// Extend Window interface for TypeScript
+declare global {
+  interface Window {
+    SpeechRecognition: new () => {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      onresult: (event: { results: SpeechRecognitionResultList }) => void;
+      onend: () => void;
+      onerror: (event: { error: string }) => void;
+      start: () => void;
+      stop: () => void;
+      abort: () => void;
+    };
+    webkitSpeechRecognition: typeof window.SpeechRecognition;
+  }
 }

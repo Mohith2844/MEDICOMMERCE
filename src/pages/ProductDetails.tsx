@@ -128,7 +128,7 @@ const ProductDetails = () => {
               </p>
 
               <p className="mt-6 text-4xl font-bold text-primary">
-                ${product.price.toFixed(2)}
+                ₹{product.price.toLocaleString('en-IN')}
               </p>
 
               <Button
@@ -158,7 +158,7 @@ const ProductDetails = () => {
                     <Truck className="h-6 w-6 text-primary" />
                     <div>
                       <p className="font-medium text-foreground">Free Shipping</p>
-                      <p className="text-xs text-muted-foreground">On orders $50+</p>
+                      <p className="text-xs text-muted-foreground">On orders ₹500+</p>
                     </div>
                   </CardContent>
                 </Card>
