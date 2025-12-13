@@ -63,7 +63,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             {product.description}
           </p>
           <p className="mt-3 text-xl font-bold text-primary">
-            ${product.price.toFixed(2)}
+            ₹{product.price.toLocaleString('en-IN')}
           </p>
         </CardContent>
       </Link>
